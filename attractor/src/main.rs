@@ -1,10 +1,12 @@
 // Usage Example
 // WIDTH=1024; HEIGHT=1024; STEPS=600; ITERATIONS=10000; ./target/debug/attractor ${WIDTH} ${HEIGHT} ${STEPS} ${ITERATIONS} -5 -5.5 2 2 2 2 2 2 | ffmpeg -y -f rawvideo -vcodec rawvideo -s ${WIDTH}x${HEIGHT} -pix_fmt rgb24 -r 60 -i - -c:v libx264 -pix_fmt yuv420p -an /tmp/lol.mov
-
+use std::process;
 use ndarray::prelude::*;
 use std::io::{self, Write};
 use std::mem;
 use std::env;
+
+use attractor::Config;
 
 fn calulate(x: f32, y: f32, a: f32, b: f32, c: f32, d: f32) -> (f32, f32)
 {
@@ -30,27 +32,15 @@ fn process(canvas: &mut [u8], iterations: u32, a: f32, b:f32, c:f32, d:f32, dime
     }
 }
 
-fn main() -> io::Result<()> {
-    let args: Vec<String> = env::args().collect();
-
-    let width = &args[1].parse::<usize>().unwrap();
-    let height = &args[2].parse::<usize>().unwrap();
-    let steps = &args[3].parse::<usize>().unwrap();
-    let iterations = &args[4].parse::<u32>().unwrap();
-
-    let a_range = (&args[5].parse::<f32>().unwrap(), &args[6].parse::<f32>().unwrap()); 
-    let b_range = (&args[7].parse::<f32>().unwrap(), &args[8].parse::<f32>().unwrap()); 
-    let c_range = (&args[9].parse::<f32>().unwrap(), &args[10].parse::<f32>().unwrap()); 
-    let d_range = (&args[11].parse::<f32>().unwrap(), &args[12].parse::<f32>().unwrap()); 
-
-    let a = Array::linspace(*a_range.0, *a_range.1, *steps);
-    let b = Array::linspace(*b_range.0, *b_range.1, *steps);
-    let c = Array::linspace(*c_range.0, *c_range.1, *steps);
-    let d = Array::linspace(*d_range.0, *d_range.1, *steps);
+fn run(config: Config) {
+    let a = Array::linspace(config.a.0, config.a.1, config.steps);
+    let b = Array::linspace(config.b.0, config.b.1, config.steps);
+    let c = Array::linspace(config.c.0, config.c.1, config.steps);
+    let d = Array::linspace(config.d.0, config.d.1, config.steps);
     
-    let mut canvas = vec![0u8; width * height * 3];
-    for i in 0..*steps {
-        process(&mut canvas, *iterations, a[i], b[i], c[i], d[i], (*width, *height));
+    let mut canvas = vec![0u8; config.width * config.height * 3];
+    for i in 0..config.steps {
+        process(&mut canvas, config.iterations, a[i], b[i], c[i], d[i], (config.width, config.height));
         
         io::stdout().write(&canvas).expect("failed to write to stdout");
 
@@ -62,5 +52,17 @@ fn main() -> io::Result<()> {
           );
         }
     }
+}
+
+fn main() -> io::Result<()> {
+    let args: Vec<String> = env::args().collect();
+
+    let config = Config::new(&args).unwrap_or_else(|err| {
+            eprintln!("Problem parsing arguments: {}", err);
+            process::exit(1);
+        });
+
+    run(config);
+
     Ok(())
 }
