@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 ndarray = "0.13.1"
 libc = "0.2"
+minifb = "0.19.2"
