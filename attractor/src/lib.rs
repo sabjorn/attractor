@@ -28,3 +28,18 @@ impl Config {
         Ok(Config { width, height, steps, iterations, a, b, c, d })
     }
 }
+
+pub struct Points
+{
+    pub x: f32,
+    pub y: f32
+}
+
+impl Points {
+    pub fn calculate_attractor(&mut self, a: f32, b: f32, c: f32, d: f32) {
+        let x = (a*self.y).sin() - (b*self.x).cos();
+        let y = (c*self.x).cos() - (d*self.y).cos();
+        self.x = x;
+        self.y = y;
+    }
+}
