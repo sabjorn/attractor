@@ -63,18 +63,28 @@ fn windowed_processing(_canvas: &mut [u32], config: attractor::Config) {
         panic!("{}", e);
     });
 
-    // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
     
     let mut buffer = vec![0u8; config.width * config.height * 4];
     let mut i = 0;
     let mut stdin = io::stdin();
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        // process(canvas, config.iterations, a[i], b[i], c[i], d[i], (config.width, config.height));
-        // read up to 10 bytes
-        stdin.read_exact(&mut buffer).unwrap();
+        stdin.read_exact(&mut buffer).unwrap_or_else(|e| {
+            match e.kind() {
+                std::io::ErrorKind::UnexpectedEof => {
+                    eprintln!("end of stream");
+                    process::exit(0);
+                }
+                ,
+                _ => {
+                    eprintln!("end of stream: {}", e);
+                    panic!("{:?}", e);
+                }
+            }
+        });
+
         let canvas = as_u32_slice(&buffer);
-        // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
+        
         window
             .update_with_buffer(&canvas, config.width, config.height)
             .unwrap();
@@ -86,7 +96,6 @@ fn windowed_processing(_canvas: &mut [u32], config: attractor::Config) {
               buffer.len() * mem::size_of::<u8>(),
           );
         }
-        // i = (i + 1) % config.steps;
     }
 }
 
