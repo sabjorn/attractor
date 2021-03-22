@@ -5,7 +5,7 @@ extern crate minifb;
 use minifb::{Key, Window, WindowOptions};
 use std::process;
 use ndarray::prelude::*;
-use std::io::{self, Write};
+use std::io::{self, Write, Read};
 use std::mem;
 use std::env;
 
@@ -36,7 +36,16 @@ fn as_u8_slice(v: &[u32]) -> &[u8] {
     }
 }
 
-fn windowed_processing(canvas: &mut [u32], config: attractor::Config) {
+fn as_u32_slice(v: &[u8]) -> &[u32] {
+    unsafe {
+        std::slice::from_raw_parts(
+            v.as_ptr() as *const u32,
+            v.len() * std::mem::size_of::<u8>(),
+        )
+    }
+}
+
+fn windowed_processing(_canvas: &mut [u32], config: attractor::Config) {
     let a = Array::linspace(config.a.0, config.a.1, config.steps);
     let b = Array::linspace(config.b.0, config.b.1, config.steps);
     let c = Array::linspace(config.c.0, config.c.1, config.steps);
@@ -57,9 +66,14 @@ fn windowed_processing(canvas: &mut [u32], config: attractor::Config) {
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
     
+    let mut buffer = vec![0u8; config.width * config.height * 4];
     let mut i = 0;
+    let mut stdin = io::stdin();
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        process(canvas, config.iterations, a[i], b[i], c[i], d[i], (config.width, config.height));
+        // process(canvas, config.iterations, a[i], b[i], c[i], d[i], (config.width, config.height));
+        // read up to 10 bytes
+        stdin.read_exact(&mut buffer).unwrap();
+        let canvas = as_u32_slice(&buffer);
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window
             .update_with_buffer(&canvas, config.width, config.height)
@@ -67,12 +81,12 @@ fn windowed_processing(canvas: &mut [u32], config: attractor::Config) {
 
         unsafe {
           libc::memset(
-              canvas.as_mut_ptr() as _,
+              buffer.as_mut_ptr() as _,
               0,
-              canvas.len() * mem::size_of::<u32>(),
+              buffer.len() * mem::size_of::<u8>(),
           );
         }
-        i = (i + 1) % config.steps;
+        // i = (i + 1) % config.steps;
     }
 }
 
